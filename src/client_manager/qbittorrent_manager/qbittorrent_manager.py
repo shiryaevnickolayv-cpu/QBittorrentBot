@@ -188,6 +188,14 @@ class QbittorrentManager(ClientManager):
             file_to_return.name = f"{torrent_name}.torrent"
             return file_to_return
 
+    async def get_preferences(self):
+        async with self._client() as qbt:
+            return await qbt.call(qbt.client.app_preferences)
+
+    async def set_preferences(self, preferences: dict) -> None:
+        async with self._client() as qbt:
+            await qbt.call(qbt.client.app_set_preferences, prefs=preferences)
+
     async def get_speed_limit_mode(self) -> bool:
         async with self._client() as qbt:
             return qbt.client.transfer.speedLimitsMode == "1"

@@ -18,3 +18,19 @@ class ToggleSpeedLimit(CallbackData, prefix="toggle_speed_limit"):
 
 class CheckConnection(CallbackData, prefix="check_connection"):
     pass
+
+
+class ClientSection(CallbackData, prefix="client_section"):
+    section: str
+
+
+class SettingEdit(CallbackData, prefix="setting_edit"):
+    key: str
+
+
+class SettingToggle(CallbackData, prefix="setting_toggle"):
+    key: str
+
+
+class RatioAction(CallbackData, prefix="ratio_action"):
+    value: int

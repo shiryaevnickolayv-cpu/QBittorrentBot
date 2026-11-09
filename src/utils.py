@@ -1,5 +1,6 @@
 from math import log, floor
 import datetime
+from decimal import Decimal, InvalidOperation
 import re
 
 from src.settings.user import User
@@ -107,3 +108,38 @@ def validate_name(name: str) -> bool:
 
 def is_rename_blocked(state: str) -> bool:
     return state == "downloading" or state.startswith("checking") or state == "moving"
+
+
+def parse_setting_value(key: str, text: str):
+    try:
+        value = Decimal(text.strip())
+    except (InvalidOperation, TypeError, AttributeError):
+        raise ValueError("Not a number") from None
+
+    if not value.is_finite():
+        raise ValueError("Not a finite number")
+
+    if key == "max_ratio":
+        if not 0 <= value <= 100 or value % Decimal("0.1") != 0:
+            raise ValueError("Ratio must be between 0 and 100 with at most one decimal place")
+        return float(value)
+
+    integer_ranges = {
+        "max_seeding_time": (0, 100000),
+        "max_inactive_seeding_time": (0, 100000),
+        "max_active_downloads": (1, 50),
+        "max_active_uploads": (1, 50),
+        "max_active_torrents": (1, 50),
+    }
+    if key in integer_ranges:
+        minimum, maximum = integer_ranges[key]
+        if value != value.to_integral_value() or not minimum <= value <= maximum:
+            raise ValueError("Integer setting is out of range")
+        return int(value)
+
+    if key in {"dl_limit", "up_limit"}:
+        if not 0 <= value <= 1000:
+            raise ValueError("Speed must be between 0 and 1000 MB/s")
+        return int(value * 1024 * 1024)
+
+    raise ValueError("Unknown setting")

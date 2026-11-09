@@ -10,9 +10,10 @@ from aiogram.utils.i18n import gettext as _
 
 from src.client_manager.client_repo import ClientRepo
 from src.settings import Settings
+from src.settings.enums import UserRolesEnum
 from src.bot.filters import IsAuthorizedUser, IsCommand
 from src.redis_helper.wrapper import RedisWrapper
-from src.utils import is_rename_blocked, validate_name
+from src.utils import get_user_from_config, is_rename_blocked, parse_setting_value, validate_name
 
 from .common import send_menu
 from .callbacks.torrent_info import show_torrent_info
@@ -142,6 +143,29 @@ def get_router():
         await message.reply(success_text)
         await show_torrent_info(bot, message.chat.id, message.message_id, settings, torrent_hash)
 
+    async def on_setting(message: Message, action: str, redis: RedisWrapper, settings: Settings):
+        user = get_user_from_config(message.from_user.id, settings)
+        if user.role != UserRolesEnum.Administrator:
+            await message.reply(_("You are not allowed to change client settings"))
+            return
+
+        key = action.split("#", 1)[1]
+        try:
+            value = parse_setting_value(key, message.text)
+        except ValueError as error:
+            await message.reply(_("Invalid value: {error}").format(error=str(error)))
+            return
+
+        repository_class = ClientRepo.get_client_manager(settings.client.type)
+        manager = repository_class(settings)
+        await manager.set_preferences({key: value})
+        preferences = await manager.get_preferences()
+        actual_value = preferences[key]
+        if key in {"dl_limit", "up_limit"}:
+            actual_value = f"{actual_value / 1024 / 1024:g} MB/s"
+        await redis.delete(f"action:{message.from_user.id}")
+        await message.reply(_("{key} is now {value}").format(key=key, value=actual_value))
+
     @router.message(Command("menu"), IsAuthorizedUser())
     async def menu_command(message: Message, redis: RedisWrapper, bot: Bot, settings: Settings) -> None:
         await send_menu(bot, redis, settings, message.chat.id, message.message_id)
@@ -171,6 +195,9 @@ def get_router():
 
         elif "torrent" in action and message.document:
             await on_torrent(message, redis, bot, settings)
+
+        elif action.startswith("setting#"):
+            await on_setting(message, action, redis, settings)
 
         elif action.startswith(("rename_torrent#", "rename_path#")):
             await on_rename(message, action, redis, bot, settings)
