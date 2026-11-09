@@ -634,3 +634,14 @@ msgstr "Missing files"
 
 msgid "Unknown"
 msgstr "Unknown"
+
+msgid "Delete a torrent"
+msgstr "Delete a torrent"
+
+
+msgid "Delete all torrents?"
+msgstr "Delete all torrents?"
+
+
+msgid "What to do with the torrent?"
+msgstr "What to do with the torrent?"

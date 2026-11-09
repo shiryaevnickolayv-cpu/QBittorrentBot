@@ -34,9 +34,10 @@ def get_router():
                 ]
             ]
 
-            await bot.edit_message_reply_markup(
+            await bot.edit_message_text(
                 chat_id=callback_query.from_user.id,
                 message_id=callback_query.message.message_id,
+                text=_("What to do with the torrent?"),
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
             )
 

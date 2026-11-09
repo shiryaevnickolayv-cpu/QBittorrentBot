@@ -21,7 +21,7 @@ def get_router():
         await bot.edit_message_text(
             chat_id=callback_query.from_user.id,
             message_id=callback_query.message.message_id,
-            text="Delete a torrent",
+            text=_("Delete a torrent"),
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -52,9 +52,10 @@ def get_router():
             ]
         ]
 
-        await bot.edit_message_reply_markup(
+        await bot.edit_message_text(
             chat_id=callback_query.from_user.id,
             message_id=callback_query.message.message_id,
+            text=_("Delete all torrents?"),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
         )
 

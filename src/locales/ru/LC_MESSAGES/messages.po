@@ -635,3 +635,14 @@ msgstr "Файлы не найдены"
 
 msgid "Unknown"
 msgstr "Неизвестно"
+
+msgid "Delete a torrent"
+msgstr "Удаление торрента"
+
+
+msgid "Delete all torrents?"
+msgstr "Удалить все торренты?"
+
+
+msgid "What to do with the torrent?"
+msgstr "Что сделать с торрентом?"

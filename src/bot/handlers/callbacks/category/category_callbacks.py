@@ -21,7 +21,7 @@ def get_router():
         await bot.edit_message_text(
             chat_id=callback_query.from_user.id,
             message_id=callback_query.message.message_id,
-            text=_("Pause/Resume a download"),
+            text=_("📂 Categories"),
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
