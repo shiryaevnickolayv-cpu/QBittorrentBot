@@ -4,6 +4,7 @@ from aiogram import Bot
 from aiogram.types import Message
 from aiogram.types.inline_keyboard_markup import InlineKeyboardMarkup
 from aiogram.types.inline_keyboard_button import InlineKeyboardButton
+from aiogram.types import ReplyKeyboardRemove
 from aiogram.dispatcher.router import Router
 from aiogram.filters import CommandStart, Command
 from aiogram.utils.i18n import gettext as _
@@ -41,7 +42,12 @@ def get_router():
     async def start_command(message: Message, redis: RedisWrapper, bot: Bot, settings: Settings) -> None:
         """Start the bot."""
         await redis.delete(f"action:{message.from_user.id}")
-        await send_menu(bot, redis, settings, message.chat.id, message.message_id)
+        # Снимаем у клиента старую нижнюю клавиатуру, если она осталась от прежней версии
+        sent = await message.answer(
+            _("Welcome to QBittorrent Bot"),
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        await send_menu(bot, redis, settings, message.chat.id, sent.message_id)
 
 
     @router.message(Command("stats"), IsAuthorizedUser())
