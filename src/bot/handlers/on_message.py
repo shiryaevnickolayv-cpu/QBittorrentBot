@@ -5,6 +5,7 @@ from aiogram import F
 from aiogram import Bot
 from aiogram.types import Message
 from aiogram.dispatcher.router import Router
+from aiogram.filters import Command
 from aiogram.utils.i18n import gettext as _
 
 from src.client_manager.client_repo import ClientRepo
@@ -104,8 +105,16 @@ def get_router():
         await send_menu(bot, redis, settings, message.chat.id, message.message_id)
 
 
+    @router.message(Command("menu"), IsAuthorizedUser())
+    async def menu_command(message: Message, redis: RedisWrapper, bot: Bot, settings: Settings) -> None:
+        await send_menu(bot, redis, settings, message.chat.id, message.message_id)
+
     @router.message(~F.from_user.is_bot, ~IsCommand(), IsAuthorizedUser())
     async def on_message(message: Message, redis: RedisWrapper, bot: Bot, settings: Settings) -> None:
+        if message.text in {"🏠 Menu", "🏠 Меню"}:
+            await send_menu(bot, redis, settings, message.chat.id, message.message_id)
+            return
+
         action = await redis.get(f"action:{message.from_user.id}") or ""
 
         if message.document and not action: # insert torrent without using UI

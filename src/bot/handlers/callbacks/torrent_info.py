@@ -91,7 +91,7 @@ def get_router():
             ],
             [
                 InlineKeyboardButton(
-                    text=_("🔙 Menu"),
+                    text=_("🏠 Menu"),
                     callback_data=Menu().pack()
                 )
             ]

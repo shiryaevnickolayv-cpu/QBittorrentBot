@@ -31,7 +31,7 @@ def get_router():
                         InlineKeyboardButton(text=_("▶\uFE0F Resume All"), callback_data=ResumeAll().pack())
                     ],
                     [
-                        InlineKeyboardButton(text=_("🔙 Menu"), callback_data=Menu().pack())
+                        InlineKeyboardButton(text=_("🏠 Menu"), callback_data=Menu().pack())
                     ]
                 ]
             )

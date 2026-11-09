@@ -3,7 +3,7 @@ import logging
 
 import psutil
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.i18n import gettext as _
 
 from src.redis_helper.wrapper import RedisWrapper
@@ -47,6 +47,15 @@ async def send_menu(bot: Bot, redis: RedisWrapper, settings: Settings, chat_id: 
         ]
 
     await redis.delete(f"action:{chat_id}")
+    if not await redis.exists(f"menu_keyboard:{chat_id}"):
+        reply_markup = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=_("🏠 Menu"))]],
+            resize_keyboard=True,
+            is_persistent=True,
+        )
+        await bot.send_message(chat_id, _("Use the Menu button below to return here at any time"), reply_markup=reply_markup)
+        await redis.set(f"menu_keyboard:{chat_id}", "1")
+
     markup = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     try:
@@ -220,7 +229,7 @@ async def list_categories(
     categories = await repository_class_class(settings).get_categories()
 
     if categories is None:
-        buttons.append([InlineKeyboardButton(text=_("🔙 Menu"), callback_data=Menu().pack())])
+        buttons.append([InlineKeyboardButton(text=_("🏠 Menu"), callback_data=Menu().pack())])
 
         await bot.edit_message_text(
             chat_id=chat_id,
@@ -234,7 +243,7 @@ async def list_categories(
     for i in categories:
         buttons.append([InlineKeyboardButton(text=i, callback_data=f"{callback}:{i}")])
 
-    buttons.append([InlineKeyboardButton(text=_("🔙 Menu"), callback_data=Menu().pack())])
+    buttons.append([InlineKeyboardButton(text=_("🏠 Menu"), callback_data=Menu().pack())])
 
     try:
         await bot.edit_message_text(
