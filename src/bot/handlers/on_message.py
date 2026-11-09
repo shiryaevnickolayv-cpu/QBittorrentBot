@@ -16,6 +16,7 @@ from src.redis_helper.wrapper import RedisWrapper
 from src.utils import escape_html, get_user_from_config, is_rename_blocked, parse_setting_value, validate_name
 
 from .common import send_menu
+from .callbacks.settings.settings_callbacks import setting_label
 from .callbacks.torrent_info import show_torrent_info
 
 
@@ -164,7 +165,9 @@ def get_router():
         if key in {"dl_limit", "up_limit"}:
             actual_value = f"{actual_value / 1024 / 1024:g} MB/s"
         await redis.delete(f"action:{message.from_user.id}")
-        await message.reply(_("{key} is now {value}").format(key=key, value=actual_value))
+        await message.reply(
+            _("{label}: now {value}").format(label=setting_label(key), value=actual_value)
+        )
 
     @router.message(Command("menu"), IsAuthorizedUser())
     async def menu_command(message: Message, redis: RedisWrapper, bot: Bot, settings: Settings) -> None:

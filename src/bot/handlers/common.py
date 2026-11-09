@@ -11,7 +11,7 @@ from src.settings import Settings
 from src.client_manager.client_repo import ClientRepo
 from src.utils import convert_size, convert_speed, get_user_from_config, paginate, status_icon, truncate_name
 from src.settings.enums import UserRolesEnum
-from src.bot.filters.callbacks import CategoryAction, CategoryMenu, ListMenu, ListPage, TorrentInfo, SettingsMenu, DeleteMenu, PauseResumeMenu, Menu
+from src.bot.filters.callbacks import CategoryAction, CategoryMenu, ListMenu, ListPage, ListSelect, TorrentInfo, SettingsMenu, DeleteMenu, PauseResumeMenu, Menu
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +89,12 @@ async def _edit_or_send(bot: Bot, chat_id: int, message_id: int, text: str, mark
 
 
 def _free_disk_space() -> int:
-    try:
-        return psutil.disk_usage("/media").free
-    except OSError:
-        return psutil.disk_usage("/").free
+    for path in ("/pool", "/media", "/"):
+        try:
+            return psutil.disk_usage(path).free
+        except OSError:
+            continue
+    return 0
 
 
 def _filter_counts(torrents) -> dict[str, int]:
@@ -127,9 +129,9 @@ def _navigation_row(status: str, page: int, total_pages: int) -> list[InlineKeyb
 def _torrent_button_text(torrent) -> str:
     text = f"{status_icon(torrent.state)} {torrent.progress:.0%} · {truncate_name(torrent.name)}"
     if torrent.state in {"downloading", "forcedDL", "metaDL"} and torrent.dlspeed > 0:
-        text += f" · ⬇️ {convert_speed(torrent.dlspeed)}"
+        text += f" · {convert_speed(torrent.dlspeed)}"
     elif torrent.state in {"uploading", "forcedUP"} and torrent.upspeed > 0:
-        text += f" · ⬆️ {convert_speed(torrent.upspeed)}"
+        text += f" · {convert_speed(torrent.upspeed)}"
     return text
 
 
@@ -173,12 +175,52 @@ async def list_active_torrents(
     ]
 
     if callback:
-        buttons = [
-            [InlineKeyboardButton(text=truncate_name(torrent.name), callback_data=f"{callback}:{torrent.hash}")]
-            for torrent in torrents
+        if not torrents:
+            await _edit_or_send(
+                bot,
+                chat_id,
+                message_id,
+                _("There are no torrents"),
+                InlineKeyboardMarkup(inline_keyboard=[back_and_menu]),
+            )
+            return
+        page_items, page, total_pages = paginate(torrents, page)
+        select_nav = [
+            InlineKeyboardButton(
+                text="⬅️" if page > 1 else "·",
+                callback_data=ListSelect(action=callback, status="all", page=max(1, page - 1)).pack(),
+            ),
+            InlineKeyboardButton(
+                text=f"{page}/{total_pages}",
+                callback_data=ListSelect(action=callback, status="all", page=page).pack(),
+            ),
+            InlineKeyboardButton(
+                text="➡️" if page < total_pages else "·",
+                callback_data=ListSelect(action=callback, status="all", page=min(total_pages, page + 1)).pack(),
+            ),
         ]
-        buttons.append(back_and_menu)
-        await _edit_or_send(bot, chat_id, message_id, _("Choose a torrent:"), InlineKeyboardMarkup(inline_keyboard=buttons))
+        buttons = [select_nav]
+        buttons.extend(
+            [
+                [
+                    InlineKeyboardButton(
+                        text=_torrent_button_text(torrent),
+                        callback_data=f"{callback}:{torrent.hash}",
+                    )
+                ]
+                for torrent in page_items
+            ]
+        )
+        buttons.extend([select_nav, back_and_menu])
+        await _edit_or_send(
+            bot,
+            chat_id,
+            message_id,
+            _("Choose a torrent: {count} · {page}/{pages}").format(
+                count=len(torrents), page=page, pages=total_pages
+            ),
+            InlineKeyboardMarkup(inline_keyboard=buttons),
+        )
         return
 
     if not torrents:

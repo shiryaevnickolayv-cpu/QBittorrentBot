@@ -10,7 +10,33 @@ from src.utils import convert_size, convert_eta, format_progress, escape_html, i
 
 from src.bot.filters.callbacks import TorrentInfo, Export, Pause, Resume, DeleteOne, Menu, EditTorrentCategory
 from src.bot.filters.callbacks import RenameMenu, RenameTorrent, RenameFiles, RenamePath
+from src.bot.filters import HasRole
+from src.settings.enums import UserRolesEnum
 from src.bot.handlers.common import list_categories
+
+STATE_LABELS = {
+    "downloading": "Downloading",
+    "forcedDL": "Downloading",
+    "metaDL": "Downloading",
+    "stalledDL": "Stalled, no peers",
+    "queuedDL": "Queued",
+    "uploading": "Seeding",
+    "forcedUP": "Seeding",
+    "stalledUP": "Seeding, no peers",
+    "queuedUP": "Queued",
+    "stoppedDL": "Paused",
+    "stoppedUP": "Paused",
+    "checkingUP": "Checking",
+    "checkingDL": "Checking",
+    "checkingResumeData": "Checking",
+    "moving": "Moving",
+    "error": "Error",
+    "missingFiles": "Missing files",
+}
+
+
+def state_label(state: str) -> str:
+    return _(STATE_LABELS.get(state, "Unknown"))
 
 
 def top_level_paths(files) -> list[tuple[str, bool]]:
@@ -33,9 +59,10 @@ async def show_torrent_info(bot: Bot, chat_id: int, message_id: int, settings: S
         text_to_send += format_progress(torrent.progress)
 
     if "stalled" not in torrent.state:
-        text_to_send += _("<b>State:</b> {current_state} \n<b>Download Speed:</b> {download_speed}/с\n").format(
-            current_state=escape_html(torrent.state.capitalize()),
+        text_to_send += _("<b>State:</b> {current_state} \n<b>Download Speed:</b> {download_speed}/с\n<b>Upload Speed:</b> {upload_speed}/с\n").format(
+            current_state=escape_html(state_label(torrent.state)),
             download_speed=convert_size(torrent.dlspeed),
+            upload_speed=convert_size(torrent.upspeed),
         )
 
     text_to_send += _("<b>Size:</b> {torrent_size}\n").format(torrent_size=convert_size(torrent.size))
@@ -45,12 +72,18 @@ async def show_torrent_info(bot: Bot, chat_id: int, message_id: int, settings: S
         text_to_send += _("<b>Category:</b> {torrent_category}\n").format(torrent_category=escape_html(torrent.category))
 
     buttons = [
-        [InlineKeyboardButton(text=_("💾 Export torrent"), callback_data=Export(torrent_hash=torrent_hash).pack())],
-        [InlineKeyboardButton(text=_("📝 Edit Category"), callback_data=EditTorrentCategory(torrent_hash=torrent_hash).pack())],
-        [InlineKeyboardButton(text=_("✏️ Rename"), callback_data=RenameMenu(torrent_hash=torrent_hash).pack())],
-        [InlineKeyboardButton(text=_("⏸ Pause"), callback_data=Pause(torrent_hash=torrent_hash).pack())],
-        [InlineKeyboardButton(text=_("▶️ Resume"), callback_data=Resume(torrent_hash=torrent_hash).pack())],
-        [InlineKeyboardButton(text=_("🗑 Delete"), callback_data=DeleteOne(torrent_hash=torrent_hash).pack())],
+        [
+            InlineKeyboardButton(text=_("💾 Export torrent"), callback_data=Export(torrent_hash=torrent_hash).pack()),
+            InlineKeyboardButton(text=_("📝 Edit Category"), callback_data=EditTorrentCategory(torrent_hash=torrent_hash).pack()),
+        ],
+        [
+            InlineKeyboardButton(text=_("⏸ Pause"), callback_data=Pause(torrent_hash=torrent_hash).pack()),
+            InlineKeyboardButton(text=_("▶️ Resume"), callback_data=Resume(torrent_hash=torrent_hash).pack()),
+        ],
+        [
+            InlineKeyboardButton(text=_("✏️ Rename"), callback_data=RenameMenu(torrent_hash=torrent_hash).pack()),
+            InlineKeyboardButton(text=_("🗑 Delete"), callback_data=DeleteOne(torrent_hash=torrent_hash).pack()),
+        ],
         [InlineKeyboardButton(text=_("🏠 Menu"), callback_data=Menu().pack())],
     ]
     markup = InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -81,7 +114,8 @@ def get_router():
         )
         await callback_query.answer()
 
-    @router.callback_query(RenameMenu.filter())
+    @router.callback_query(RenameMenu.filter(), HasRole(UserRolesEnum.Manager))
+    @router.callback_query(RenameMenu.filter(), HasRole(UserRolesEnum.Administrator))
     async def rename_menu_callback(
         callback_query: CallbackQuery,
         callback_data: RenameMenu,
@@ -104,7 +138,8 @@ def get_router():
         await callback_query.message.edit_text(_("Choose what to rename"), reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
         await callback_query.answer()
 
-    @router.callback_query(RenameTorrent.filter())
+    @router.callback_query(RenameTorrent.filter(), HasRole(UserRolesEnum.Manager))
+    @router.callback_query(RenameTorrent.filter(), HasRole(UserRolesEnum.Administrator))
     async def rename_torrent_callback(
         callback_query: CallbackQuery,
         callback_data: RenameTorrent,
@@ -127,7 +162,8 @@ def get_router():
         )
         await callback_query.answer()
 
-    @router.callback_query(RenameFiles.filter())
+    @router.callback_query(RenameFiles.filter(), HasRole(UserRolesEnum.Manager))
+    @router.callback_query(RenameFiles.filter(), HasRole(UserRolesEnum.Administrator))
     async def rename_files_callback(
         callback_query: CallbackQuery,
         callback_data: RenameFiles,
@@ -155,7 +191,8 @@ def get_router():
         await callback_query.message.edit_text(_("Choose a folder or file"), reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
         await callback_query.answer()
 
-    @router.callback_query(RenamePath.filter())
+    @router.callback_query(RenamePath.filter(), HasRole(UserRolesEnum.Manager))
+    @router.callback_query(RenamePath.filter(), HasRole(UserRolesEnum.Administrator))
     async def rename_path_callback(
         callback_query: CallbackQuery,
         callback_data: RenamePath,

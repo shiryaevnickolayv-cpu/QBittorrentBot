@@ -1,7 +1,7 @@
 from aiogram import Bot, Router
 from aiogram.types import CallbackQuery
 
-from src.bot.filters.callbacks import ListMenu, ListPage, Menu
+from src.bot.filters.callbacks import ListMenu, ListPage, ListSelect, Menu
 from src.bot.handlers.common import list_active_torrents, send_menu
 from src.settings import Settings
 from src.redis_helper.wrapper import RedisWrapper
@@ -22,6 +22,19 @@ def get_router():
             callback_query.from_user.id,
             callback_query.message.message_id,
             settings,
+            status_filter=callback_data.status,
+            page=callback_data.page,
+        )
+        await callback_query.answer()
+
+    @router.callback_query(ListSelect.filter())
+    async def list_select_callback(callback_query: CallbackQuery, callback_data: ListSelect, settings: Settings, bot: Bot) -> None:
+        await list_active_torrents(
+            bot,
+            callback_query.from_user.id,
+            callback_query.message.message_id,
+            settings,
+            callback=callback_data.action,
             status_filter=callback_data.status,
             page=callback_data.page,
         )

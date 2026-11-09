@@ -590,3 +590,49 @@ msgstr "⬇️ Качается"
 
 msgid "📋 All"
 msgstr "📋 Все"
+
+msgid "<b>State:</b> {current_state} \n<b>Download Speed:</b> {download_speed}/с\n<b>Upload Speed:</b> {upload_speed}/с\n"
+msgstr "<b>Состояние:</b> {current_state} \n<b>Скорость загрузки:</b> {download_speed}/с\n<b>Скорость отдачи:</b> {upload_speed}/с\n"
+
+
+msgid "Choose a torrent: {count} · {page}/{pages}"
+msgstr "Выбери торрент: {count} · {page}/{pages}"
+
+
+msgid "There are no torrents"
+msgstr "Торрентов нет"
+
+
+msgid "{label}: now {value}"
+msgstr "{label}: теперь {value}"
+
+msgid "Stalled, no peers"
+msgstr "Ожидание пиров"
+
+
+msgid "Seeding, no peers"
+msgstr "Нет пиров"
+
+
+msgid "Queued"
+msgstr "В очереди"
+
+
+msgid "Checking"
+msgstr "Проверка"
+
+
+msgid "Moving"
+msgstr "Перемещение"
+
+
+msgid "Error"
+msgstr "Ошибка"
+
+
+msgid "Missing files"
+msgstr "Файлы не найдены"
+
+
+msgid "Unknown"
+msgstr "Неизвестно"

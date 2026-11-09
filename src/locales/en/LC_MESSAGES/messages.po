@@ -589,3 +589,49 @@ msgstr "⬇️ Downloading"
 
 msgid "📋 All"
 msgstr "📋 All"
+
+msgid "<b>State:</b> {current_state} \n<b>Download Speed:</b> {download_speed}/с\n<b>Upload Speed:</b> {upload_speed}/с\n"
+msgstr "<b>State:</b> {current_state} \n<b>Download Speed:</b> {download_speed}/s\n<b>Upload Speed:</b> {upload_speed}/s\n"
+
+
+msgid "Choose a torrent: {count} · {page}/{pages}"
+msgstr "Choose a torrent: {count} · {page}/{pages}"
+
+
+msgid "There are no torrents"
+msgstr "There are no torrents"
+
+
+msgid "{label}: now {value}"
+msgstr "{label}: now {value}"
+
+msgid "Stalled, no peers"
+msgstr "Stalled, no peers"
+
+
+msgid "Seeding, no peers"
+msgstr "Seeding, no peers"
+
+
+msgid "Queued"
+msgstr "Queued"
+
+
+msgid "Checking"
+msgstr "Checking"
+
+
+msgid "Moving"
+msgstr "Moving"
+
+
+msgid "Error"
+msgstr "Error"
+
+
+msgid "Missing files"
+msgstr "Missing files"
+
+
+msgid "Unknown"
+msgstr "Unknown"

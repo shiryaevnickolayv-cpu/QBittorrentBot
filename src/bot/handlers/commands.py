@@ -1,3 +1,5 @@
+import os
+
 from aiogram import Bot
 from aiogram.types import Message
 from aiogram.types.inline_keyboard_markup import InlineKeyboardMarkup
@@ -49,6 +51,9 @@ def get_router():
         except KeyError:
             cpu_temp = 0
 
+        disk_path = next((p for p in ("/pool", "/media", "/") if os.path.isdir(p)), "/")
+        disk = psutil.disk_usage(disk_path)
+
         stats_text = _(
             "<b>============SYSTEM============</b>\n<b>CPU Usage:</b> {cpu_usage}%\n" \
             "<b>CPU Temp:</b> {cpu_temp}°C\n<b>Free Memory:</b> {free_memory} of {total_memory} ({memory_percent}%)\n" \
@@ -59,9 +64,9 @@ def get_router():
                 free_memory=convert_size(psutil.virtual_memory().available),
                 total_memory=convert_size(psutil.virtual_memory().total),
                 memory_percent=psutil.virtual_memory().percent,
-                disk_used=convert_size(psutil.disk_usage('/mnt').used),
-                disk_total=convert_size(psutil.disk_usage('/mnt').total),
-                disk_percent=psutil.disk_usage('/mnt').percent
+                disk_used=convert_size(disk.used),
+                disk_total=convert_size(disk.total),
+                disk_percent=disk.percent
             )
         )
 

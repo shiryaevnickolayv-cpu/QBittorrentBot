@@ -10,5 +10,11 @@ class ListPage(CallbackData, prefix="list_page"):
     page: int
 
 
+class ListSelect(CallbackData, prefix="list_select"):
+    action: str
+    status: str
+    page: int
+
+
 class Menu(CallbackData, prefix="menu"):
     pass

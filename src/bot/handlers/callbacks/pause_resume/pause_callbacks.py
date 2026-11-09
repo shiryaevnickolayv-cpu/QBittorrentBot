@@ -6,6 +6,7 @@ from src.bot.filters.callbacks import PauseResumeMenu, Menu, PauseAll, Pause, Re
 from src.bot.filters import HasRole
 from src.client_manager.client_repo import ClientRepo
 from src.bot.handlers.common import list_active_torrents
+from src.bot.handlers.callbacks.torrent_info import show_torrent_info
 
 from src.settings import Settings
 from src.settings.enums import UserRolesEnum
@@ -59,5 +60,12 @@ def get_router():
             repository_class = ClientRepo.get_client_manager(settings.client.type)
             await repository_class(settings).pause(torrent_hash=callback_data.torrent_hash)
             await callback_query.answer(text=_("Torrent Paused"))
+            await show_torrent_info(
+                bot,
+                callback_query.from_user.id,
+                callback_query.message.message_id,
+                settings,
+                callback_data.torrent_hash,
+            )
 
     return router

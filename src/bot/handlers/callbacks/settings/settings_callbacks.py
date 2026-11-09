@@ -60,6 +60,11 @@ SETTING_PROMPTS = {
 }
 
 
+def setting_label(key: str) -> str:
+    label = next(label for section in SECTION_SETTINGS.values() for item_key, label in section if item_key == key)
+    return _(label)
+
+
 def setting_section(key: str) -> str:
     return next(section for section, settings in SECTION_SETTINGS.items() if any(item[0] == key for item in settings))
 
@@ -204,7 +209,10 @@ def get_router():
         updated = await manager.get_preferences()
         value = updated[callback_data.key]
         await callback_query.answer(
-            _("{key} is now {value}").format(key=callback_data.key, value=format_preference(callback_data.key, value)),
+            _("{label}: now {value}").format(
+                label=setting_label(callback_data.key),
+                value=format_preference(callback_data.key, value),
+            ),
             show_alert=True,
         )
         await show_client_section(
@@ -228,7 +236,10 @@ def get_router():
         updated = await manager.get_preferences()
         value = updated["max_ratio_act"]
         await callback_query.answer(
-            _("max_ratio_act is now {value}").format(value=format_preference("max_ratio_act", value)),
+            _("{label}: now {value}").format(
+                label=setting_label("max_ratio_act"),
+                value=format_preference("max_ratio_act", value),
+            ),
             show_alert=True,
         )
         await show_client_section(bot, callback_query.from_user.id, callback_query.message.message_id, settings, "seeding")

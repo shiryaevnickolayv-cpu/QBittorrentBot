@@ -6,6 +6,7 @@ from src.bot.filters.callbacks import Resume, ResumeAll
 from src.bot.filters import HasRole
 from src.client_manager.client_repo import ClientRepo
 from src.bot.handlers.common import list_active_torrents
+from src.bot.handlers.callbacks.torrent_info import show_torrent_info
 
 from src.settings import Settings
 from src.settings.enums import UserRolesEnum
@@ -37,5 +38,12 @@ def get_router():
             await repository_class(settings).resume(torrent_hash=callback_data.torrent_hash)
 
             await callback_query.answer(text=_("Torrent Resumed"))
+            await show_torrent_info(
+                bot,
+                callback_query.from_user.id,
+                callback_query.message.message_id,
+                settings,
+                callback_data.torrent_hash,
+            )
 
     return router
