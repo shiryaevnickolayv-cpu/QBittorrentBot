@@ -59,22 +59,22 @@ class QbittorrentManager(ClientManager):
     async def resume_all(self) -> None:
         logger.debug("Resuming all torrents")
         async with self._client() as qbt:
-            await qbt.call(qbt.client.torrents.resume.all)
+            await qbt.call(qbt.client.torrents_start, torrent_hashes="all")
 
     async def pause_all(self) -> None:
         logger.debug("Pausing all torrents")
         async with self._client() as qbt:
-            await qbt.call(qbt.client.torrents.pause.all)
+            await qbt.call(qbt.client.torrents_stop, torrent_hashes="all")
 
     async def resume(self, torrent_hash: str) -> None:
         logger.debug(f"Resuming torrent with has {torrent_hash}")
         async with self._client() as qbt:
-            await qbt.call(qbt.client.torrents_resume, torrent_hashes=torrent_hash)
+            await qbt.call(qbt.client.torrents_start, torrent_hashes=torrent_hash)
 
     async def pause(self, torrent_hash: str) -> None:
         logger.debug(f"Pausing torrent with hash {torrent_hash}")
         async with self._client() as qbt:
-            await qbt.call(qbt.client.torrents_pause, torrent_hashes=torrent_hash)
+            await qbt.call(qbt.client.torrents_stop, torrent_hashes=torrent_hash)
 
     async def delete_one_no_data(self, torrent_hash: str) -> None:
         logger.debug(f"Deleting torrent with hash {torrent_hash} without removing files")
