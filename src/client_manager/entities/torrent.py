@@ -8,6 +8,7 @@ class Torrent:
     name: str
     progress: int
     dlspeed: int
+    upspeed: int
     state: str
     size: int
     eta: int

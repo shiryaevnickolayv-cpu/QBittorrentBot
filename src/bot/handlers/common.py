@@ -1,6 +1,7 @@
 from typing import Optional
 import logging
 
+import psutil
 from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.i18n import gettext as _
@@ -8,9 +9,9 @@ from aiogram.utils.i18n import gettext as _
 from src.redis_helper.wrapper import RedisWrapper
 from src.settings import Settings
 from src.client_manager.client_repo import ClientRepo
-from src.utils import get_user_from_config
+from src.utils import convert_size, get_user_from_config, paginate, status_icon, truncate_name
 from src.settings.enums import UserRolesEnum
-from src.bot.filters.callbacks import CategoryAction, CategoryMenu, ListByStatus, List, TorrentInfo, SettingsMenu, DeleteMenu, PauseResumeMenu, Menu
+from src.bot.filters.callbacks import CategoryAction, CategoryMenu, ListMenu, ListPage, TorrentInfo, SettingsMenu, DeleteMenu, PauseResumeMenu, Menu
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ async def send_menu(bot: Bot, redis: RedisWrapper, settings: Settings, chat_id: 
 
     # Build buttons
     buttons = [
-        [InlineKeyboardButton(text=_("📝 List"), callback_data=List().pack())]
+        [InlineKeyboardButton(text=_("📝 List"), callback_data=ListMenu().pack())]
     ]
 
     if user.role in [UserRolesEnum.Manager, UserRolesEnum.Administrator]:
@@ -71,83 +72,139 @@ async def send_menu(bot: Bot, redis: RedisWrapper, settings: Settings, chat_id: 
         )
 
 
+async def _edit_or_send(bot: Bot, chat_id: int, message_id: int, text: str, markup: InlineKeyboardMarkup) -> None:
+    try:
+        await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, reply_markup=markup)
+    except Exception:
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
+
+
+def _free_disk_space() -> int:
+    try:
+        return psutil.disk_usage("/media").free
+    except OSError:
+        return psutil.disk_usage("/").free
+
+
+def _filter_counts(torrents) -> dict[str, int]:
+    return {
+        "downloading": sum(t.state in {"downloading", "forcedDL", "metaDL", "stalledDL", "queuedDL"} for t in torrents),
+        "seeding": sum(t.state in {"uploading", "forcedUP", "stalledUP", "queuedUP"} for t in torrents),
+        "completed": sum(t.progress >= 1 for t in torrents),
+        "stopped": sum(t.state in {"stoppedDL", "stoppedUP"} for t in torrents),
+        "all": len(torrents),
+    }
+
+
+def _navigation_row(status: str, page: int, total_pages: int) -> list[InlineKeyboardButton]:
+    previous_page = max(1, page - 1)
+    next_page = min(total_pages, page + 1)
+    return [
+        InlineKeyboardButton(
+            text="⬅️" if page > 1 else "·",
+            callback_data=ListPage(status=status, page=previous_page).pack(),
+        ),
+        InlineKeyboardButton(
+            text=f"{page}/{total_pages}",
+            callback_data=ListPage(status=status, page=page).pack(),
+        ),
+        InlineKeyboardButton(
+            text="➡️" if page < total_pages else "·",
+            callback_data=ListPage(status=status, page=next_page).pack(),
+        ),
+    ]
+
+
+def _torrent_button_text(torrent) -> str:
+    text = f"{status_icon(torrent.state)} {torrent.progress:.0%} · {truncate_name(torrent.name)}"
+    if torrent.state in {"downloading", "forcedDL", "metaDL"} and torrent.dlspeed > 0:
+        text += f" · ⬇️ {convert_size(torrent.dlspeed)}/s"
+    elif torrent.state in {"uploading", "forcedUP"} and torrent.upspeed > 0:
+        text += f" · ⬆️ {convert_size(torrent.upspeed)}/s"
+    return text
+
+
 async def list_active_torrents(
     bot: Bot,
     chat_id: int,
     message_id: int,
     settings: Settings,
     callback: Optional[str] = None,
-    status_filter: Optional[str] = None
+    status_filter: Optional[str] = None,
+    page: int = 1,
 ) -> None:
     repository_class = ClientRepo.get_client_manager(settings.client.type)
-    torrents = await repository_class(settings).get_torrents(status_filter=status_filter)
+    manager = repository_class(settings)
 
-    # Status filter buttons
-    categories_buttons = [
-        InlineKeyboardButton(
-            text=_("⏳ {active} Downloading"
-                .format(
-                    active='*' if status_filter == 'downloading' else ''
-                )
-            ),
-            callback_data=ListByStatus(status="downloading").pack()
-        ),
-        InlineKeyboardButton(
-            text=_("✔️ {active} Completed"
-                .format(
-                    active='*' if status_filter == 'completed' else ''
-                )
-            ),
-            callback_data=ListByStatus(status="completed").pack()
-        ),
-        InlineKeyboardButton(
-            text=_("⏸️ {active} Paused"
-                .format(
-                    active='*' if status_filter == 'paused' else ''
-                )
-            ),
-            callback_data=ListByStatus(status="paused").pack()
-        )
-    ]
-
-    buttons = [categories_buttons]
-
-    if not torrents:
-        buttons.append([InlineKeyboardButton(text=_("🔙 Menu"), callback_data="menu")])
-        try:
-            await bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=message_id,
-                text=_("There are no torrents"),
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-            )
-        except Exception:
-            await bot.send_message(
-                chat_id=chat_id,
-                text=_("There are no torrents"),
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-            )
+    if callback is None and status_filter is None:
+        torrents = await manager.get_torrents()
+        counts = _filter_counts(torrents)
+        filter_buttons = [
+            ("⬇️ Downloading", "downloading"),
+            ("⬆️ Seeding", "seeding"),
+            ("✅ Completed", "completed"),
+            ("⏸ Paused", "stopped"),
+            ("📋 All", "all"),
+        ]
+        buttons = []
+        for index in range(0, len(filter_buttons), 2):
+            row = []
+            for label, status in filter_buttons[index:index + 2]:
+                text = _("{label} ({count})").format(label=_(label), count=counts[status])
+                row.append(InlineKeyboardButton(text=text, callback_data=ListPage(status=status, page=1).pack()))
+            buttons.append(row)
+        buttons.append([InlineKeyboardButton(text=_("🏠 Menu"), callback_data=Menu().pack())])
+        await _edit_or_send(bot, chat_id, message_id, _("Choose a section"), InlineKeyboardMarkup(inline_keyboard=buttons))
         return
 
-    # Torrent buttons
-    for torrent in torrents:
-        if callback:
-            buttons.append([InlineKeyboardButton(text=torrent.name[:40], callback_data=f"{callback}:{torrent.hash}")])
-        else:
-            buttons.append([InlineKeyboardButton(text=torrent.name[:40], callback_data=TorrentInfo(torrent_hash=torrent.hash).pack())])
+    torrents = await manager.get_torrents(status_filter=status_filter)
+    back_and_menu = [
+        InlineKeyboardButton(text=_("🔙 Sections"), callback_data=ListMenu().pack()),
+        InlineKeyboardButton(text=_("🏠 Menu"), callback_data=Menu().pack()),
+    ]
 
-    buttons.append([InlineKeyboardButton(text=_("🔙 Menu"), callback_data="menu")])
-    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+    if callback:
+        buttons = [
+            [InlineKeyboardButton(text=truncate_name(torrent.name), callback_data=f"{callback}:{torrent.hash}")]
+            for torrent in torrents
+        ]
+        buttons.append(back_and_menu)
+        await _edit_or_send(bot, chat_id, message_id, _("Choose a torrent:"), InlineKeyboardMarkup(inline_keyboard=buttons))
+        return
 
-    try:
-        await bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=markup)
-    except Exception:
-        # fallback: send a new message
-        await bot.send_message(
-            chat_id=chat_id,
-            text=_("🔙 Menu"),
-            reply_markup=markup
+    if not torrents:
+        await _edit_or_send(
+            bot,
+            chat_id,
+            message_id,
+            _("This section is empty"),
+            InlineKeyboardMarkup(inline_keyboard=[back_and_menu]),
         )
+        return
+
+    page_items, page, total_pages = paginate(torrents, page)
+    section_names = {
+        "downloading": _("Downloading"),
+        "seeding": _("Seeding"),
+        "completed": _("Completed"),
+        "stopped": _("Paused"),
+        "all": _("All"),
+    }
+    header = _("{section}: {count} · ⬇️ {download_speed}/s · ⬆️ {upload_speed}/s · Free {free_space}").format(
+        section=section_names[status_filter],
+        count=len(torrents),
+        download_speed=convert_size(sum(t.dlspeed for t in torrents)),
+        upload_speed=convert_size(sum(t.upspeed for t in torrents)),
+        free_space=convert_size(_free_disk_space()),
+    )
+    navigation = _navigation_row(status_filter, page, total_pages)
+    buttons = [navigation]
+    buttons.extend(
+        [InlineKeyboardButton(text=_torrent_button_text(torrent), callback_data=TorrentInfo(torrent_hash=torrent.hash).pack())]
+        for torrent in page_items
+    )
+    buttons.extend([_navigation_row(status_filter, page, total_pages), back_and_menu])
+    await _edit_or_send(bot, chat_id, message_id, header, InlineKeyboardMarkup(inline_keyboard=buttons))
 
 
 async def list_categories(

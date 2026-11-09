@@ -54,3 +54,45 @@ def escape_markdown(text: str):
     # Characters that need escaping in Telegram MarkdownV2
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
+
+
+MAX_NAME_LEN = 34
+TORRENTS_PER_PAGE = 8
+
+
+def status_icon(state: str) -> str:
+    icons = {
+        "downloading": "⬇️",
+        "forcedDL": "⬇️",
+        "metaDL": "⬇️",
+        "stalledDL": "🔌",
+        "queuedDL": "🕓",
+        "uploading": "⬆️",
+        "forcedUP": "⬆️",
+        "stalledUP": "💤",
+        "queuedUP": "⏳",
+        "stoppedDL": "⏸",
+        "stoppedUP": "⏸",
+        "checkingUP": "🔄",
+        "checkingDL": "🔄",
+        "checkingResumeData": "🔄",
+        "moving": "🔄",
+        "error": "⚠️",
+        "missingFiles": "⚠️",
+    }
+    return icons.get(state, "❓")
+
+
+def paginate(items, page: int, per_page: int = TORRENTS_PER_PAGE):
+    if per_page < 1:
+        raise ValueError("per_page must be positive")
+    total_pages = max(1, (len(items) + per_page - 1) // per_page)
+    page = min(max(1, page), total_pages)
+    start = (page - 1) * per_page
+    return items[start:start + per_page], page, total_pages
+
+
+def truncate_name(name: str, max_length: int = MAX_NAME_LEN) -> str:
+    if len(name) <= max_length:
+        return name
+    return name[:max_length - 1] + "…"

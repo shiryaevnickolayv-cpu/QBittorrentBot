@@ -1,12 +1,13 @@
 from aiogram.filters.callback_data import CallbackData
 
 
-class List(CallbackData, prefix="list"):
+class ListMenu(CallbackData, prefix="list_menu"):
     pass
 
 
-class ListByStatus(CallbackData, prefix="by_status_list"):
-    status: str | None
+class ListPage(CallbackData, prefix="list_page"):
+    status: str
+    page: int
 
 
 class Menu(CallbackData, prefix="menu"):
