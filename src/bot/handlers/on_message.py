@@ -12,8 +12,10 @@ from src.client_manager.client_repo import ClientRepo
 from src.settings import Settings
 from src.bot.filters import IsAuthorizedUser, IsCommand
 from src.redis_helper.wrapper import RedisWrapper
+from src.utils import is_rename_blocked, validate_name
 
 from .common import send_menu
+from .callbacks.torrent_info import show_torrent_info
 
 
 logger = logging.getLogger(__name__)
@@ -105,9 +107,49 @@ def get_router():
         await send_menu(bot, redis, settings, message.chat.id, message.message_id)
 
 
+    async def on_rename(message: Message, action: str, redis: RedisWrapper, bot: Bot, settings: Settings):
+        new_name = message.text
+        if not validate_name(new_name):
+            await message.reply(_("Invalid name: use 1-255 characters without \\ / : * ? \" < > | or control characters"))
+            return
+
+        repository_class = ClientRepo.get_client_manager(settings.client.type)
+        manager = repository_class(settings)
+        payload = action.split("#", 1)[1]
+        torrent_hash = payload.split("|", 1)[0]
+        torrent = await manager.get_torrent(torrent_hash)
+        if is_rename_blocked(torrent.state):
+            await message.reply(_("Stop the torrent before renaming it"))
+            return
+
+        if action.startswith("rename_torrent#"):
+            await manager.rename_torrent(torrent_hash, new_name)
+            success_text = _("Torrent name updated")
+        else:
+            old_path = payload.split("|", 1)[1]
+            path_parts = old_path.split("/")
+            path_parts[-1] = new_name
+            new_path = "/".join(path_parts)
+            files = await manager.get_torrent_files(torrent_hash)
+            is_folder = any(file.name.startswith(old_path + "/") for file in files)
+            if is_folder:
+                await manager.rename_torrent_folder(torrent_hash, old_path, new_path)
+            else:
+                await manager.rename_torrent_file(torrent_hash, old_path, new_path)
+            success_text = _("Folder or file renamed")
+
+        await redis.delete(f"action:{message.from_user.id}")
+        await message.reply(success_text)
+        await show_torrent_info(bot, message.chat.id, message.message_id, settings, torrent_hash)
+
     @router.message(Command("menu"), IsAuthorizedUser())
     async def menu_command(message: Message, redis: RedisWrapper, bot: Bot, settings: Settings) -> None:
         await send_menu(bot, redis, settings, message.chat.id, message.message_id)
+
+    @router.message(Command("cancel"), IsAuthorizedUser())
+    async def cancel_command(message: Message, redis: RedisWrapper) -> None:
+        await redis.delete(f"action:{message.from_user.id}")
+        await message.reply(_("Cancelled"))
 
     @router.message(~F.from_user.is_bot, ~IsCommand(), IsAuthorizedUser())
     async def on_message(message: Message, redis: RedisWrapper, bot: Bot, settings: Settings) -> None:
@@ -116,6 +158,10 @@ def get_router():
             return
 
         action = await redis.get(f"action:{message.from_user.id}") or ""
+        if message.text in {"Cancel", "Отмена"} and action:
+            await redis.delete(f"action:{message.from_user.id}")
+            await message.reply(_("Cancelled"))
+            return
 
         if message.document and not action: # insert torrent without using UI
              await on_torrent(message, redis, bot, settings)
@@ -125,6 +171,9 @@ def get_router():
 
         elif "torrent" in action and message.document:
             await on_torrent(message, redis, bot, settings)
+
+        elif action.startswith(("rename_torrent#", "rename_path#")):
+            await on_rename(message, action, redis, bot, settings)
 
         elif action == "category_name":
             await on_category_name(message, redis)

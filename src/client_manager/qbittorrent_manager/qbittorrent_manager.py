@@ -123,6 +123,32 @@ class QbittorrentManager(ClientManager):
             )
             return mapper.map(torrent)
 
+    async def rename_torrent(self, torrent_hash: str, new_name: str) -> None:
+        async with self._client() as qbt:
+            await qbt.call(qbt.client.torrents_rename, torrent_hash=torrent_hash, new_torrent_name=new_name)
+
+    async def get_torrent_files(self, torrent_hash: str):
+        async with self._client() as qbt:
+            return await qbt.call(qbt.client.torrents_files, torrent_hash=torrent_hash)
+
+    async def rename_torrent_folder(self, torrent_hash: str, old_path: str, new_path: str) -> None:
+        async with self._client() as qbt:
+            await qbt.call(
+                qbt.client.torrents_rename_folder,
+                torrent_hash=torrent_hash,
+                old_path=old_path,
+                new_path=new_path,
+            )
+
+    async def rename_torrent_file(self, torrent_hash: str, old_path: str, new_path: str) -> None:
+        async with self._client() as qbt:
+            await qbt.call(
+                qbt.client.torrents_rename_file,
+                torrent_hash=torrent_hash,
+                old_path=old_path,
+                new_path=new_path,
+            )
+
     async def get_torrents(self, torrent_hash: str = None, status_filter: str = None) -> List[Torrent]:
         if torrent_hash is None:
             logger.debug("Getting torrents infos")

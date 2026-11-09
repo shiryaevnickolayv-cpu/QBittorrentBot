@@ -96,3 +96,14 @@ def truncate_name(name: str, max_length: int = MAX_NAME_LEN) -> str:
     if len(name) <= max_length:
         return name
     return name[:max_length - 1] + "…"
+
+
+def validate_name(name: str) -> bool:
+    if not name or not name.strip() or len(name) > 255:
+        return False
+    forbidden = set('\\/:*?"<>|')
+    return not any(char in forbidden or ord(char) < 32 or 127 <= ord(char) <= 159 for char in name)
+
+
+def is_rename_blocked(state: str) -> bool:
+    return state == "downloading" or state.startswith("checking") or state == "moving"
