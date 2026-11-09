@@ -5,7 +5,7 @@ from logging import getLogger
 from pathlib import Path
 from watchfiles import awatch
 
-from src.utils import escape_markdown
+from src.utils import escape_html
 from src.redis_helper.wrapper import RedisWrapper
 from src.client_manager.client_repo import ClientRepo
 from src.settings import Settings
@@ -42,7 +42,7 @@ async def torrent_finished(bot: Bot, redis: RedisWrapper, settings: Settings, i1
                                 user.user_id,
                                 _("Torrent {name} has finished downloading!"
                                     .format(
-                                        name=escape_markdown(i.name)
+                                        name=escape_html(i.name)
                                     )
                                 )
                             )

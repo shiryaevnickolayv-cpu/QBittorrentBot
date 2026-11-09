@@ -9,7 +9,7 @@ from aiogram.utils.i18n import gettext as _
 from src.redis_helper.wrapper import RedisWrapper
 from src.settings import Settings
 from src.client_manager.client_repo import ClientRepo
-from src.utils import convert_size, get_user_from_config, paginate, status_icon, truncate_name
+from src.utils import convert_size, convert_speed, get_user_from_config, paginate, status_icon, truncate_name
 from src.settings.enums import UserRolesEnum
 from src.bot.filters.callbacks import CategoryAction, CategoryMenu, ListMenu, ListPage, TorrentInfo, SettingsMenu, DeleteMenu, PauseResumeMenu, Menu
 
@@ -127,9 +127,9 @@ def _navigation_row(status: str, page: int, total_pages: int) -> list[InlineKeyb
 def _torrent_button_text(torrent) -> str:
     text = f"{status_icon(torrent.state)} {torrent.progress:.0%} · {truncate_name(torrent.name)}"
     if torrent.state in {"downloading", "forcedDL", "metaDL"} and torrent.dlspeed > 0:
-        text += f" · ⬇️ {convert_size(torrent.dlspeed)}/s"
+        text += f" · ⬇️ {convert_speed(torrent.dlspeed)}"
     elif torrent.state in {"uploading", "forcedUP"} and torrent.upspeed > 0:
-        text += f" · ⬆️ {convert_size(torrent.upspeed)}/s"
+        text += f" · ⬆️ {convert_speed(torrent.upspeed)}"
     return text
 
 
@@ -199,11 +199,11 @@ async def list_active_torrents(
         "stopped": _("Paused"),
         "all": _("All"),
     }
-    header = _("{section}: {count} · ⬇️ {download_speed}/s · ⬆️ {upload_speed}/s · Free {free_space}").format(
+    header = _("{section}: {count} · ⬇️ {download_speed} · ⬆️ {upload_speed} · Free {free_space}").format(
         section=section_names[status_filter],
         count=len(torrents),
-        download_speed=convert_size(sum(t.dlspeed for t in torrents)),
-        upload_speed=convert_size(sum(t.upspeed for t in torrents)),
+        download_speed=convert_speed(sum(t.dlspeed for t in torrents)),
+        upload_speed=convert_speed(sum(t.upspeed for t in torrents)),
         free_space=convert_size(_free_disk_space()),
     )
     navigation = _navigation_row(status_filter, page, total_pages)

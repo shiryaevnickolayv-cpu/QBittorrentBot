@@ -6,6 +6,7 @@ from src.client_manager.client_repo import ClientRepo
 from src.settings import Settings
 from src.settings.enums import UserRolesEnum
 from src.redis_helper.wrapper import RedisWrapper
+from src.utils import escape_html
 
 from src.bot.filters import HasRole
 from src.bot.filters.callbacks import AddCategory, SelectCategory, CategoryMenu, Menu, RemoveCategory, ModifyCategory, CategoryAction, AddMagnet, AddTorrent, ChangeTorrentCategory
@@ -88,7 +89,7 @@ def get_router():
             message_id=callback_query.message.message_id,
             text=_("The category {category_name} has been removed"
                 .format(
-                    category_name=callback_data.category
+                    category_name=escape_html(callback_data.category)
                 )
             ),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -110,7 +111,7 @@ def get_router():
             message_id=callback_query.message.message_id,
             text=_("Send new path for category {category_name}"
                 .format(
-                    category_name=callback_data.category
+                    category_name=escape_html(callback_data.category)
                 )
             ),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)

@@ -50,9 +50,9 @@ def get_router():
             cpu_temp = 0
 
         stats_text = _(
-            "**============SYSTEM============**\n**CPU Usage:** {cpu_usage}%\n" \
-            "**CPU Temp:** {cpu_temp}°C\n**Free Memory:** {free_memory} of {total_memory} ({memory_percent}%)\n" \
-            "**Disks usage:** {disk_used} of {disk_total} ({disk_percent}%)"
+            "<b>============SYSTEM============</b>\n<b>CPU Usage:</b> {cpu_usage}%\n" \
+            "<b>CPU Temp:</b> {cpu_temp}°C\n<b>Free Memory:</b> {free_memory} of {total_memory} ({memory_percent}%)\n" \
+            "<b>Disks usage:</b> {disk_used} of {disk_total} ({disk_percent}%)"
             .format(
                 cpu_usage=psutil.cpu_percent(interval=None),
                 cpu_temp=cpu_temp,

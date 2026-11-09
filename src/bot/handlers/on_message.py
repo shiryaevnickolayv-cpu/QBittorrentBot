@@ -13,7 +13,7 @@ from src.settings import Settings
 from src.settings.enums import UserRolesEnum
 from src.bot.filters import IsAuthorizedUser, IsCommand
 from src.redis_helper.wrapper import RedisWrapper
-from src.utils import get_user_from_config, is_rename_blocked, parse_setting_value, validate_name
+from src.utils import escape_html, get_user_from_config, is_rename_blocked, parse_setting_value, validate_name
 
 from .common import send_menu
 from .callbacks.torrent_info import show_torrent_info
@@ -88,7 +88,7 @@ def get_router():
         await message.reply(
             _("Please, send the path for the category {category_name}"
                 .format(
-                    category_name=message.text
+                    category_name=escape_html(message.text)
                 )
             )
         )
@@ -111,7 +111,7 @@ def get_router():
     async def on_rename(message: Message, action: str, redis: RedisWrapper, bot: Bot, settings: Settings):
         new_name = message.text
         if not validate_name(new_name):
-            await message.reply(_("Invalid name: use 1-255 characters without \\ / : * ? \" < > | or control characters"))
+            await message.reply(_("Invalid name: use 1-255 characters without path separators, reserved characters, or control characters"))
             return
 
         repository_class = ClientRepo.get_client_manager(settings.client.type)

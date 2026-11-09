@@ -1,9 +1,12 @@
-from math import log, floor
-import datetime
-from decimal import Decimal, InvalidOperation
-import re
+from __future__ import annotations
 
-from src.settings.user import User
+from math import log, floor
+from decimal import Decimal, InvalidOperation
+from html import escape
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.settings.user import User
 
 
 def get_user_from_config(user_id: int, settings: "Settings") -> User:
@@ -16,28 +19,50 @@ def get_user_from_config(user_id: int, settings: "Settings") -> User:
 
 def convert_size(size_bytes) -> str:
     if size_bytes == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-    i = int(floor(log(size_bytes, 1024)))
+        return "0 Б"
+    size_name = ("Б", "КБ", "МБ", "ГБ", "ТБ", "ПБ", "ЭБ", "ЗБ", "ЙБ")
+    i = min(int(floor(log(size_bytes, 1024))), len(size_name) - 1)
     p = pow(1024, i)
     s = round(size_bytes / p, 2)
     return "%s %s" % (s, size_name[i])
 
 
+def convert_speed(speed: int) -> str:
+    return f"{convert_size(speed)}/с"
+
+
 def convert_eta(n) -> str:
-    return str(datetime.timedelta(seconds=n))
+    if n is None or n < 0 or n >= 8640000:
+        return "∞"
+    seconds = int(n)
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days:
+        parts = [f"{days} д"]
+        if hours:
+            parts.append(f"{hours} ч")
+        if minutes:
+            parts.append(f"{minutes} мин")
+        return " ".join(parts)
+    if hours:
+        parts = [f"{hours} ч"]
+        if minutes:
+            parts.append(f"{minutes} мин")
+        return " ".join(parts)
+    if minutes:
+        parts = [f"{minutes} мин"]
+        if seconds:
+            parts.append(f"{seconds} сек")
+        return " ".join(parts)
+    return f"{seconds} сек"
 
 
-def format_progress(progress: float, width: int = 20) -> str:
-    """
-    progress: float from 0.0 to 1.0
-    """
+def format_progress(progress: float, width: int = 12) -> str:
     progress = max(0.0, min(progress, 1.0))
     filled = int(progress * width)
-
     bar = "█" * filled + "░" * (width - filled)
     percent = int(progress * 100)
-
     return f"{percent:3d}%|{bar}|\n"
 
 
@@ -51,10 +76,8 @@ def inejct_new_config_data(json_data: dict):
         json_data['users'][index] = i
 
 
-def escape_markdown(text: str):
-    # Characters that need escaping in Telegram MarkdownV2
-    escape_chars = r'_*[]()~`>#+-=|{}.!'
-    return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
+def escape_html(text: str) -> str:
+    return escape(str(text), quote=False)
 
 
 MAX_NAME_LEN = 34

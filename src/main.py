@@ -34,7 +34,7 @@ async def main(base_path: Path) -> None:
     bot = Bot(
         token=settings.telegram.bot_token,
         default=DefaultBotProperties(
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.HTML
         ),
         session=session
     )

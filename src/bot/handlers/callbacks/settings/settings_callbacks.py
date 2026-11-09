@@ -82,7 +82,7 @@ async def show_client_settings(bot: Bot, chat_id: int, message_id: int, settings
     repository_class = ClientRepo.get_client_manager(settings.client.type)
     speed_limit = await repository_class(settings).get_speed_limit_mode()
     speed_limit_status = _("✅ Enabled") if speed_limit else _("❌ Disabled")
-    text = _("Edit {client_type} client settings\n\n**Speed Limit**: {speed_limit_status}").format(
+    text = _("Edit {client_type} client settings\n\n<b>Speed Limit</b>: {speed_limit_status}").format(
         client_type=settings.client.type.value.title(),
         speed_limit_status=speed_limit_status,
     )
